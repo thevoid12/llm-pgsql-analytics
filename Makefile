@@ -1,7 +1,13 @@
-.PHONY: init
+.PHONY: init install run activate
+
 init:
 	uv init
 
-.PHONY: run
+install:
+	uv add streamlit
+
 run:
-	uv run main.py
+	uv run streamlit run main.py
+
+activate:
+	source .venv/bin/activate

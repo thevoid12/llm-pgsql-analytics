@@ -1,5 +1,10 @@
+import streamlit as st
+
+
 def main():
-    print("Hello from chat-poc!")
+    st.write("Hello from chat-poc!")
+    st.title("Chat POC")
+    
 
 
 if __name__ == "__main__":
