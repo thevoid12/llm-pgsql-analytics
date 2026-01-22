@@ -1,20 +1,21 @@
 import streamlit as st
-from llm import hello_check
 
+st.title("Chat POC")
 
-def main():
-    st.title("Chat POC")
-    st.write("Hello from chat-poc!")
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+if prompt := st.chat_input("What would you like to know?"):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
     
-    if st.button("Test LLM Connection"):
-        with st.spinner("Getting response from LLM..."):
-            try:
-                response = hello_check()
-                st.success("LLM Response:")
-                st.write(response)
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
-
-
-if __name__ == "__main__":
-    main()
+    response = "This is a hardcoded response. I'm here to help you!"
+    
+    with st.chat_message("assistant"):
+        st.markdown(response)
+    st.session_state.messages.append({"role": "assistant", "content": response})
