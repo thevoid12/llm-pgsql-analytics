@@ -1,7 +1,9 @@
 import os
 from openai import AzureOpenAI
 from dotenv import load_dotenv
-from prompt import QUESTION_CHECKER_USR, STATEMENT_RESPONSE_USR
+from prompt import QUESTION_CHECKER_USR, STATEMENT_RESPONSE_USR, IDENTIFY_TABLE_USR
+from models import TableIdentificationResponse, ConfidenceLevel
+from typing import List
 
 load_dotenv()
 
@@ -58,3 +60,37 @@ def generate_statement_response(statement: str) -> str:
     )
     
     return response.choices[0].message.content.strip()
+
+def identify_tables(
+    current_question: str,
+    tables_info: str,
+    conversation_history: List[str]
+) -> TableIdentificationResponse:
+    client = get_llm_client()
+    model = os.getenv("MODEL")
+    
+    history_text = "\n".join([f"- {msg}" for msg in conversation_history]) if conversation_history else "No previous conversation"
+    
+    #TODO: in future we need to check for tokens and compress the history to prevent limit. not now but a good optimization
+    prompt = IDENTIFY_TABLE_USR.format(
+        tables_info=tables_info,
+        conversation_history=history_text,
+        current_question=current_question
+    )
+    
+    try:
+        completion = client.beta.chat.completions.parse(
+            model=model,
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0,
+            response_format=TableIdentificationResponse
+        )
+        
+        return completion.choices[0].message.parsed
+    except Exception as e:
+        return TableIdentificationResponse(
+            confidence=ConfidenceLevel.NOT_CONFIDENT,
+            tables=[]
+        )

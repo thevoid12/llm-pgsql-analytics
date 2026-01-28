@@ -1,6 +1,13 @@
 from datetime import datetime
 from typing import List
+from enum import Enum
 from pydantic import BaseModel, Field
+
+
+class ConfidenceLevel(str, Enum):
+    VERY_CONFIDENT = "very_confident"
+    LESS_CONFIDENT = "less_confident"
+    NOT_CONFIDENT = "not_confident"
 
 
 class ChatMessage(BaseModel):
@@ -11,6 +18,11 @@ class ChatMessage(BaseModel):
         json_encoders = {
             datetime: lambda v: v.isoformat()
         }
+
+
+class TableIdentificationResponse(BaseModel):
+    confidence: ConfidenceLevel
+    tables: List[str] = Field(default_factory=list)
 
 
 class SessionHistory(BaseModel):

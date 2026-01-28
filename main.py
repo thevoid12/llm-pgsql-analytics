@@ -1,6 +1,11 @@
 import streamlit as st
 from session_manager import RedisSessionManager
-from llm import check_question_or_statement, generate_statement_response
+from llm import check_question_or_statement, generate_statement_response, identify_tables
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent / "data"))
+from database_data import format_tables_for_llm
 
 st.title("Chat POC")
 
@@ -26,7 +31,15 @@ if prompt := st.chat_input("What would you like to know?"):
     if "statement" in input_type:
         response = generate_statement_response(prompt)
     else:
-        response = "This is a hardcoded response. I'm here to help you!"
+        session_history = st.session_state.session_manager.get_session_history()
+        conversation_history = []
+        if session_history and session_history.messages:
+            conversation_history = [msg.content for msg in session_history.messages[-5:]]
+        
+        tables_info = format_tables_for_llm()
+        table_result = identify_tables(prompt, tables_info, conversation_history)
+        
+        response = f"Identified tables with {table_result.confidence.value} confidence: {', '.join(table_result.tables) if table_result.tables else 'None'}\n\nThis is a placeholder response. Full query implementation coming next!"
     
     with st.chat_message("assistant"):
         st.markdown(response)
