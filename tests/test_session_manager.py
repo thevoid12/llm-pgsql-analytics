@@ -7,7 +7,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from session_manager import RedisSessionManager
-from models import SessionHistory, UserQuestion
+from models import SessionHistory, ChatMessage
 
 
 @pytest.fixture
@@ -32,12 +32,12 @@ def test_redis_key_generation(session_manager: RedisSessionManager) -> None:
 
 def test_save_question(session_manager: RedisSessionManager) -> None:
     question = "What is the weather today?"
-    session_manager.save_question(question)
+    session_manager.save_message(question)
     
     history = session_manager.get_session_history()
     assert history is not None
-    assert len(history.questions) == 1
-    assert history.questions[0].question == question
+    assert len(history.messages) == 1
+    assert history.messages[0].content == question
     assert history.customer_id == "test_cust_01"
     assert history.session_id == "test-session-123"
 
@@ -50,15 +50,15 @@ def test_save_multiple_questions(session_manager: RedisSessionManager) -> None:
     ]
     
     for question in questions:
-        session_manager.save_question(question)
+        session_manager.save_message(question)
     
     history = session_manager.get_session_history()
     assert history is not None
-    assert len(history.questions) == len(questions)
+    assert len(history.messages) == len(questions)
     
     for i, question in enumerate(questions):
-        assert history.questions[i].question == question
-        assert history.questions[i].timestamp is not None
+        assert history.messages[i].content == question
+        assert history.messages[i].timestamp is not None
 
 
 def test_get_session_history_empty(session_manager: RedisSessionManager) -> None:
@@ -67,7 +67,7 @@ def test_get_session_history_empty(session_manager: RedisSessionManager) -> None
 
 
 def test_clear_session(session_manager: RedisSessionManager) -> None:
-    session_manager.save_question("Test question")
+    session_manager.save_message("Test question")
     
     history = session_manager.get_session_history()
     assert history is not None
@@ -79,10 +79,10 @@ def test_clear_session(session_manager: RedisSessionManager) -> None:
 
 
 def test_question_timestamps_are_ordered(session_manager: RedisSessionManager) -> None:
-    session_manager.save_question("First question")
-    session_manager.save_question("Second question")
+    session_manager.save_message("First question")
+    session_manager.save_message("Second question")
     
     history = session_manager.get_session_history()
     assert history is not None
-    assert len(history.questions) == 2
-    assert history.questions[0].timestamp <= history.questions[1].timestamp
+    assert len(history.messages) == 2
+    assert history.messages[0].timestamp <= history.messages[1].timestamp

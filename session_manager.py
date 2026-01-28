@@ -3,7 +3,7 @@ import json
 import redis
 from typing import Optional
 from dotenv import load_dotenv
-from models import SessionHistory, UserQuestion
+from models import SessionHistory, ChatMessage
 
 load_dotenv()
 
@@ -22,7 +22,7 @@ class RedisSessionManager:
     def _get_redis_key(self) -> str:
         return f"{self.customer_id}_{self.session_id}"
     
-    def save_question(self, question: str) -> None:
+    def save_message(self, content: str) -> None:
         key = self._get_redis_key()
         session_history = self.get_session_history()
         
@@ -32,7 +32,7 @@ class RedisSessionManager:
                 session_id=self.session_id
             )
         
-        session_history.add_question(question)
+        session_history.add_message(content)
         self.redis_client.set(key, session_history.model_dump_json())
     
     def get_session_history(self) -> Optional[SessionHistory]:

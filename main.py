@@ -1,5 +1,6 @@
 import streamlit as st
 from session_manager import RedisSessionManager
+from llm import check_question_or_statement, generate_statement_response
 
 st.title("Chat POC")
 
@@ -18,9 +19,14 @@ if prompt := st.chat_input("What would you like to know?"):
     with st.chat_message("user"):
         st.markdown(prompt)
     
-    st.session_state.session_manager.save_question(prompt)
+    input_type = check_question_or_statement(prompt)
     
-    response = "This is a hardcoded response. I'm here to help you!"
+    st.session_state.session_manager.save_message(prompt)
+    
+    if "statement" in input_type:
+        response = generate_statement_response(prompt)
+    else:
+        response = "This is a hardcoded response. I'm here to help you!"
     
     with st.chat_message("assistant"):
         st.markdown(response)

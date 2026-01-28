@@ -8,3 +8,11 @@ When responding, please output a response in one of two below options and nothin
 2) statement.
 
 """
+
+# ------------------------------------- Statement Response ---------------------------------------------------
+STATEMENT_RESPONSE_USR = """
+The user has made the following statement: {statement}
+
+Please provide a brief, natural, and friendly one or two line response acknowledging their statement.
+
+"""

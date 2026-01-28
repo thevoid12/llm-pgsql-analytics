@@ -3,8 +3,8 @@ from typing import List
 from pydantic import BaseModel, Field
 
 
-class UserQuestion(BaseModel):
-    question: str
+class ChatMessage(BaseModel):
+    content: str
     timestamp: datetime = Field(default_factory=datetime.now)
     
     class Config:
@@ -16,10 +16,10 @@ class UserQuestion(BaseModel):
 class SessionHistory(BaseModel):
     customer_id: str
     session_id: str
-    questions: List[UserQuestion] = Field(default_factory=list)
+    messages: List[ChatMessage] = Field(default_factory=list)
     
-    def add_question(self, question: str) -> None:
-        self.questions.append(UserQuestion(question=question))
+    def add_message(self, content: str) -> None:
+        self.messages.append(ChatMessage(content=content))
     
     class Config:
         json_encoders = {
