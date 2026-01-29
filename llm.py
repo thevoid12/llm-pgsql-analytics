@@ -1,8 +1,8 @@
 import os
 from openai import AzureOpenAI
 from dotenv import load_dotenv
-from prompt import QUESTION_CHECKER_USR, STATEMENT_RESPONSE_USR, IDENTIFY_TABLE_USR
-from models import TableIdentificationResponse, ConfidenceLevel
+from prompt import RELEVANT_QUESTION_CHECKER_USR, STATEMENT_RESPONSE_USR, IDENTIFY_TABLE_USR, FOLLOW_UP_TABLE_USR
+from models import TableIdentificationResponse, ConfidenceLevel, InputClassification
 from typing import List
 
 load_dotenv()
@@ -28,28 +28,30 @@ def hello_check():
     
     return response.choices[0].message.content
 
-def check_question_or_statement(user_input: str) -> str:
+def check_question_or_statement(user_input: str) -> InputClassification:
     client = get_llm_client()
     model = os.getenv("MODEL")
     
-    prompt = QUESTION_CHECKER_USR.format(context=user_input)
+    prompt = RELEVANT_QUESTION_CHECKER_USR.format(context=user_input)
     
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0
-    )
-    
-    result = response.choices[0].message.content.strip().lower()
-    return result
+    try:
+        completion = client.beta.chat.completions.parse(
+            model=model,
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0,
+            response_format=InputClassification
+        )
+        
+        return completion.choices[0].message.parsed
+    except Exception as e:
+        return InputClassification(type="statement", reasoning="Unable to classify input")
 
-def generate_statement_response(statement: str) -> str:
+def generate_statement_response(statement: str, reasoning: str = "") -> str:
     client = get_llm_client()
     model = os.getenv("MODEL")
-    
-    prompt = STATEMENT_RESPONSE_USR.format(statement=statement)
+    prompt = STATEMENT_RESPONSE_USR.format(statement=statement, reasoning=reasoning)
     
     response = client.chat.completions.create(
         model=model,
@@ -94,3 +96,29 @@ def identify_tables(
             confidence=ConfidenceLevel.NOT_CONFIDENT,
             tables=[]
         )
+
+def generate_follow_up_question(
+    user_question: str,
+    confidence: str,
+    possible_tables: List[str]
+) -> str:
+    client = get_llm_client()
+    model = os.getenv("MODEL")
+    
+    tables_text = ", ".join(possible_tables) if possible_tables else "None identified"
+    
+    prompt = FOLLOW_UP_TABLE_USR.format(
+        user_question=user_question,
+        confidence=confidence,
+        possible_tables=tables_text
+    )
+    
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.7
+    )
+    
+    return response.choices[0].message.content.strip()

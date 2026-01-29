@@ -10,6 +10,11 @@ class ConfidenceLevel(str, Enum):
     NOT_CONFIDENT = "not_confident"
 
 
+class InputClassification(BaseModel):
+    type: str
+    reasoning: str = ""
+
+
 class ChatMessage(BaseModel):
     content: str
     timestamp: datetime = Field(default_factory=datetime.now)

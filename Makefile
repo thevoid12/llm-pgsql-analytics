@@ -1,4 +1,4 @@
-.PHONY: init install run activate redis-build redis-start redis-stop redis-logs redis-clean test-redis
+.PHONY: init install run activate redis-build redis-start redis-stop redis-logs redis-clean test-redis run_clean
 
 init:
 	uv init
@@ -30,3 +30,9 @@ redis-clean: redis-stop
 
 test-redis:
 	uv run pytest tests/test_redis.py -v
+
+run_clean:
+	@echo "Clearing Redis session data..."
+	@podman exec chat-poc-redis redis-cli DEL "$$(grep CUSTOMER_ID .env | cut -d '=' -f2)_$$(grep SESSION_ID .env | cut -d '=' -f2)" || echo "Redis key not found or already cleared"
+	@echo "Session cleared. Starting application..."
+	uv run streamlit run main.py
