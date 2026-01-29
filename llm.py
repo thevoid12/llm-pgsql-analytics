@@ -1,8 +1,8 @@
 import os
 from openai import AzureOpenAI
 from dotenv import load_dotenv
-from prompt import RELEVANT_QUESTION_CHECKER_USR, STATEMENT_RESPONSE_USR, IDENTIFY_TABLE_USR, FOLLOW_UP_TABLE_USR
-from models import TableIdentificationResponse, ConfidenceLevel, InputClassification
+from prompt import RELEVANT_QUESTION_CHECKER_USR, STATEMENT_RESPONSE_USR, IDENTIFY_TABLE_USR, FOLLOW_UP_TABLE_USR, IDENTIFY_ENTITIES_COLUMNS_USR
+from models import TableIdentificationResponse, ConfidenceLevel, InputClassification, TableColumnResponse, EntityColumnDetectionResponse
 from typing import List
 
 load_dotenv()
@@ -113,12 +113,12 @@ def generate_follow_up_question(
     client = get_llm_client()
     model = os.getenv("MODEL")
     
-    tables_text = ", ".join(possible_tables) if possible_tables else "None identified"
+    tables_list = "\n".join([f"- {table}" for table in possible_tables])
     
     prompt = FOLLOW_UP_TABLE_USR.format(
         user_question=user_question,
         confidence=confidence,
-        possible_tables=tables_text
+        possible_tables=tables_list
     )
     
     response = client.chat.completions.create(
@@ -130,3 +130,35 @@ def generate_follow_up_question(
     )
     
     return response.choices[0].message.content.strip()
+
+
+def identify_entities_and_columns(
+    user_question: str,
+    table_columns_info: str,
+    conversation_history: List[str]
+) -> List[TableColumnResponse]:
+    client = get_llm_client()
+    model = os.getenv("MODEL")
+    
+    history_text = str(conversation_history) if conversation_history else "[]"
+    
+    prompt = IDENTIFY_ENTITIES_COLUMNS_USR.format(
+        table_columns_info=table_columns_info,
+        user_question=user_question,
+        conversation_history=history_text
+    )
+    
+    try:
+        completion = client.beta.chat.completions.parse(
+            model=model,
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0,
+            response_format=EntityColumnDetectionResponse
+        )
+        
+        return completion.choices[0].message.parsed.tables
+    except Exception as e:
+        print(f"Error in identify_entities_and_columns: {e}")
+        return []

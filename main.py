@@ -1,12 +1,12 @@
 import streamlit as st
 from session_manager import RedisSessionManager
-from llm import check_question_or_statement, generate_statement_response, identify_tables, generate_follow_up_question
+from llm import check_question_or_statement, generate_statement_response, identify_tables, generate_follow_up_question, identify_entities_and_columns
 from models import ConfidenceLevel, MessageRole
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "data"))
-from database_data import format_tables_for_llm
+from database_data import format_tables_for_llm,format_table_columns_for_llm
 
 st.title("Chat POC")
 
@@ -40,7 +40,26 @@ if prompt := st.chat_input("What would you like to know?"):
             table_result = identify_tables(prompt, tables_info, conversation_history)
             
             if table_result.confidence == ConfidenceLevel.VERY_CONFIDENT:
-                response = f"Identified tables: {', '.join(table_result.tables)}\n\nThis is a placeholder response. Full query implementation coming next!"
+                table_columns_info = format_table_columns_for_llm(table_result.tables)
+                
+                entity_column_result = identify_entities_and_columns(
+                    user_question=prompt,
+                    table_columns_info=table_columns_info,
+                    conversation_history=conversation_history
+                )
+                
+                response_parts = [f"Identified tables: {', '.join(table_result.tables)}"]
+                response_parts.append("\nColumns and entities detected:")
+                
+                for table_col in entity_column_result:
+                    response_parts.append(f"\n{table_col.table}:")
+                    for col_mapping in table_col.columns:
+                        if col_mapping.entity_value:
+                            response_parts.append(f"  - {col_mapping.column} = '{col_mapping.entity_value}'")
+                        else:
+                            response_parts.append(f"  - {col_mapping.column}")
+                
+                response = "\n".join(response_parts)
             else:
                 response = generate_follow_up_question(
                     user_question=prompt,

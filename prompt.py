@@ -106,6 +106,83 @@ If not_confident, provide an empty array or your best guess.
 
 """
 
+# ------------------------------------- Entity and Column Identification ---------------------------------------------------
+IDENTIFY_ENTITIES_COLUMNS_USR = """
+You are a clinical trial data expert. Given a user's question and the identified tables with their column details, identify:
+1. Which columns from each table are needed to answer the question
+2. specific entity values if mentioned in the question that map to those columns
+
+Table Details:
+{table_columns_info}
+
+User Question: {user_question}
+
+Conversation History:
+{conversation_history}
+
+Instructions:
+Respond in JSON format with the following structure:
+- Identify ONLY the columns that are directly needed to answer the user's question
+- For each column, extract any specific entity value mentioned in the question
+- Entity values are specific data points the user is asking about (e.g., "America" for siteregion, "Calcium" for lbtest, "Grade 1" for aetoxgr)
+- If no specific value is mentioned for a column, leave entity_value empty
+- Include columns needed for filtering, grouping, or displaying results
+- Common column patterns:
+  * Identifiers: comprehendid, studyid, siteid, usubjid
+  * Filters: visit, visitnum, arm, siteregion, sitecountry
+  * Measurements: lbstresn (lab results), vsstresn (vital signs), egstresn (ECG)
+  * Test names: lbtest, vstest, egtest
+  * Dates: aestdtc, lbdtc, vsdtc
+  * Status/flags: aeser, aesev, aetoxgr, aeongo, lbnrind
+
+Examples:
+
+Question: "List subjects with lab result where labtest calcium is greater than cholesterol"
+Output:
+[
+  {{
+    "table": "RPT_LAB_INFORMATION",
+    "columns": [
+      {{"column": "usubjid", "entity_value": ""}},
+      {{"column": "lbtest", "entity_value": "Calcium"}},
+      {{"column": "lbstresn", "entity_value": ""}},
+      {{"column": "lbtest", "entity_value": "Cholesterol"}},
+      {{"column": "lbstresn", "entity_value": ""}}
+    ]
+  }}
+]
+
+Question: "Show adverse events from America region with severity Grade 1"
+Output:
+[
+  {{
+    "table": "RPT_AE",
+    "columns": [
+      {{"column": "usubjid", "entity_value": ""}},
+      {{"column": "aeterm", "entity_value": ""}},
+      {{"column": "siteregion", "entity_value": "America"}},
+      {{"column": "aetoxgr", "entity_value": "Grade 1"}}
+    ]
+  }}
+]
+
+Question: "Get vital signs temperature and pulse for visit 2"
+Output:
+[
+  {{
+    "table": "RPT_VS",
+    "columns": [
+      {{"column": "usubjid", "entity_value": ""}},
+      {{"column": "vstest", "entity_value": "Temperature"}},
+      {{"column": "vstest", "entity_value": "Pulse Rate"}},
+      {{"column": "vsstresn", "entity_value": ""}},
+      {{"column": "visitnum", "entity_value": "2"}}
+    ]
+  }}
+]
+
+"""
+
 # ------------------------------------- Follow Up Table ---------------------------------------------------
 FOLLOW_UP_TABLE_USR = """
 You are a clinical trial database expert. The user asked a question but we need clarification on which specific table(s) to query.

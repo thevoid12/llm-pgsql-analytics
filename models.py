@@ -36,6 +36,20 @@ class TableIdentificationResponse(BaseModel):
     tables: List[str] = Field(default_factory=list)
 
 
+class ColumnEntityMapping(BaseModel):
+    column: str
+    entity_value: str = ""
+
+
+class TableColumnResponse(BaseModel):
+    table: str
+    columns: List[ColumnEntityMapping] = Field(default_factory=list)
+
+
+class EntityColumnDetectionResponse(BaseModel):
+    tables: List[TableColumnResponse] = Field(default_factory=list)
+
+
 class SessionHistory(BaseModel):
     customer_id: str
     session_id: str
