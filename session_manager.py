@@ -3,7 +3,7 @@ import json
 import redis
 from typing import Optional
 from dotenv import load_dotenv
-from models import SessionHistory, ChatMessage
+from models import SessionHistory, ChatMessage, MessageRole
 
 load_dotenv()
 
@@ -22,7 +22,7 @@ class RedisSessionManager:
     def _get_redis_key(self) -> str:
         return f"{self.customer_id}_{self.session_id}"
     
-    def save_message(self, content: str) -> None:
+    def save_message(self, content: str, role: MessageRole) -> None:
         key = self._get_redis_key()
         session_history = self.get_session_history()
         
@@ -32,7 +32,7 @@ class RedisSessionManager:
                 session_id=self.session_id
             )
         
-        session_history.add_message(content)
+        session_history.add_message(content, role)
         self.redis_client.set(key, session_history.model_dump_json())
     
     def get_session_history(self) -> Optional[SessionHistory]:
@@ -47,6 +47,18 @@ class RedisSessionManager:
     def clear_session(self) -> None:
         key = self._get_redis_key()
         self.redis_client.delete(key)
+    
+    def get_user_messages(self, limit: int = None) -> list[str]:
+        session_history = self.get_session_history()
+        
+        if session_history is None or not session_history.messages:
+            return []
+        
+        user_messages = [msg.content for msg in session_history.messages if msg.role == MessageRole.USER]
+        
+        if limit:
+            return user_messages[-limit:]
+        return user_messages
     
     def close(self) -> None:
         self.redis_client.close()

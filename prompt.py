@@ -9,9 +9,19 @@ Whether you need help with a specific question or just want to have a conversati
 # ------------------------------------- Question Checker ---------------------------------------------------
 RELEVANT_QUESTION_CHECKER_USR = """ 
 You are a highly intelligent and accurate clinical domain assistant helps the user to identify the different clinical domains from a natural language question.
-Given the context below, check wheather context is a a relevant question or a statement for our usecase.
-Context: {context}
-1) if user ask anything which is not related to clinical domain such as weather, programming, general knowledge, sports etc then these type of questions are invalid so it is a statement
+
+Conversation History:
+{conversation_history}
+
+Current User Input: {context}
+
+Analyze the current input in the context of the conversation history. Check whether the current input is a relevant clinical data question or a statement.
+
+Rules:
+1) If user asks anything not related to clinical domain (weather, programming, general knowledge, sports, etc.) - classify as statement
+2) If the input is a follow-up or continuation of a previous clinical question (even if it's just a word or two like "yes", "and calcium", "visit 2") - classify as question
+3) If the input adds filters or conditions to a previous clinical query - classify as question
+4) If it's a greeting without clinical context - classify as statement
 
 When responding, output in JSON format:
 {{
@@ -20,17 +30,25 @@ When responding, output in JSON format:
 }}
 
 Examples:
-Input: Show me list of subjects with ae is ANAEMY and seriousness is Yes and Ae toxicity grade is Grade 1 and Ae Ongoing is Yes
+Conversation: []
+Input: Show me list of subjects with ae is ANAEMY and seriousness is Yes
 Output: {{"type": "question", "reasoning": ""}}
 
+Conversation: []
 Input: What is today's weather?
 Output: {{"type": "statement", "reasoning": "This is asking about weather information, which is not related to clinical trial data"}}
 
+Conversation: ["Show me lab results for calcium"]
+Input: and cholesterol
+Output: {{"type": "question", "reasoning": ""}}
+
+Conversation: ["List subjects with adverse events"]
+Input: visit 2
+Output: {{"type": "question", "reasoning": ""}}
+
+Conversation: []
 Input: How are you?
 Output: {{"type": "statement", "reasoning": "This is a general greeting, not a clinical data query"}}
-
-Input: maximum lab result for heamoglobin less than 17 and visit number 2
-Output: {{"type": "question", "reasoning": ""}}
 
 """
 

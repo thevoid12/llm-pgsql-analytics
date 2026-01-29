@@ -1,7 +1,7 @@
 import streamlit as st
 from session_manager import RedisSessionManager
 from llm import check_question_or_statement, generate_statement_response, identify_tables, generate_follow_up_question
-from models import ConfidenceLevel
+from models import ConfidenceLevel, MessageRole
 import sys
 from pathlib import Path
 
@@ -26,18 +26,16 @@ if prompt := st.chat_input("What would you like to know?"):
         st.markdown(prompt)
     
     with st.spinner("Processing your request..."):
-        input_classification = check_question_or_statement(prompt)
+        conversation_history = st.session_state.session_manager.get_user_messages() #TODO: in future we got to user a merger prompt and use that for updated context which is a better idea for scale and accuracy
+        
+        input_classification = check_question_or_statement(prompt, conversation_history)
         print(f"input_classification: {input_classification}")
-        st.session_state.session_manager.save_message(prompt)
+        
+        st.session_state.session_manager.save_message(prompt, MessageRole.USER)
         
         if input_classification.type == "statement":
             response = generate_statement_response(prompt, input_classification.reasoning)
         else:
-            session_history = st.session_state.session_manager.get_session_history()
-            conversation_history = []
-            if session_history and session_history.messages:
-                conversation_history = [msg.content for msg in session_history.messages[-5:]]
-            
             tables_info = format_tables_for_llm()
             table_result = identify_tables(prompt, tables_info, conversation_history)
             
@@ -50,7 +48,7 @@ if prompt := st.chat_input("What would you like to know?"):
                     possible_tables=table_result.tables
                 )
         
-        st.session_state.session_manager.save_message(response)
+        st.session_state.session_manager.save_message(response, MessageRole.AGENT)
     
     with st.chat_message("assistant"):
         st.markdown(response)

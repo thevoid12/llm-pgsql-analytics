@@ -28,11 +28,19 @@ def hello_check():
     
     return response.choices[0].message.content
 
-def check_question_or_statement(user_input: str) -> InputClassification:
+def check_question_or_statement(user_input: str, conversation_history: List[str] = None) -> InputClassification:
     client = get_llm_client()
     model = os.getenv("MODEL")
     
-    prompt = RELEVANT_QUESTION_CHECKER_USR.format(context=user_input)
+    if conversation_history is None:
+        conversation_history = []
+    
+    history_text = str(conversation_history) if conversation_history else "[]"
+    
+    prompt = RELEVANT_QUESTION_CHECKER_USR.format(
+        context=user_input,
+        conversation_history=history_text
+    )
     
     try:
         completion = client.beta.chat.completions.parse(
