@@ -1,7 +1,7 @@
 import os
 from openai import AzureOpenAI
 from dotenv import load_dotenv
-from prompt import RELEVANT_QUESTION_CHECKER_USR, STATEMENT_RESPONSE_USR, IDENTIFY_TABLE_USR, FOLLOW_UP_TABLE_USR, IDENTIFY_ENTITIES_COLUMNS_USR
+from prompt import RELEVANT_QUESTION_CHECKER_USR, STATEMENT_RESPONSE_USR, IDENTIFY_TABLE_USR, FOLLOW_UP_TABLE_USR, IDENTIFY_ENTITIES_COLUMNS_USR, GENERATE_SQL_USR
 from models import TableIdentificationResponse, ConfidenceLevel, InputClassification, TableColumnResponse, EntityColumnDetectionResponse
 from typing import List
 
@@ -162,3 +162,41 @@ def identify_entities_and_columns(
     except Exception as e:
         print(f"Error in identify_entities_and_columns: {e}")
         return []
+
+
+def generate_sql_query(
+    user_question: str,
+    table_column_results: List[TableColumnResponse],
+    full_table_schema: str
+) -> str:
+    client = get_llm_client()
+    model = os.getenv("MODEL")
+    
+    table_column_info_parts = []
+    for table_result in table_column_results:
+        columns_str = []
+        for col in table_result.columns:
+            if col.entity_value:
+                columns_str.append(f"{col.column} (entity: {col.entity_value})")
+            else:
+                columns_str.append(col.column)
+        table_column_info_parts.append(f"Table: {table_result.table}\nSelected Columns: {', '.join(columns_str)}")
+    
+    selected_columns_info = "\n\n".join(table_column_info_parts)
+    
+    table_column_info = f"Selected columns and entities:\n{selected_columns_info}\n\nFull table schema (all available columns):\n{full_table_schema}"
+    
+    prompt = GENERATE_SQL_USR.format(
+        user_question=user_question,
+        table_column_info=table_column_info
+    )
+    
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0
+    )
+    
+    return response.choices[0].message.content.strip()

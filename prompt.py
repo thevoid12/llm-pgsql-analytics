@@ -209,3 +209,66 @@ Examples:
 - User asks about "How are you?": since it deviates from the context, ask for more specifics on exactly what they are looking for.
 Generate a specific follow-up question:
 """
+
+# ------------------------------------- SQL Generation ---------------------------------------------------
+GENERATE_SQL_USR = """
+You are a SQL expert for clinical trial databases. Generate a valid SQL query based on the user's question and the identified tables, columns, and entity values.
+
+User Question: {user_question}
+
+Table and Column Information:
+{table_column_info}
+
+Instructions:
+1. Generate a SELECT query using ONLY the provided tables and columns
+2. Use appropriate JOINs if multiple tables are involved (join on common keys like usubjid, studyid)
+3. Apply WHERE clauses for any entity values specified
+4. Use proper SQL syntax (assume PostgreSQL dialect)
+5. For text comparisons, use ILIKE for case-insensitive matching
+6. Always include relevant identifier columns (usubjid, studyid) in SELECT
+7. Order results logically (by subject ID or date when applicable)
+
+Common join keys:
+- usubjid: Subject identifier (primary key for joining subject-level data)
+- studyid: Study identifier
+- siteid: Site identifier
+
+Output ONLY the SQL query, no explanations or markdown formatting.
+
+Examples:
+
+Input:
+Table: RPT_AE
+Columns: usubjid, aeterm (entity: Headache), aesev (entity: Severe)
+
+Output:
+SELECT usubjid, aeterm, aesev
+FROM RPT_AE
+WHERE LOWER(aeterm) ILIKE '%headache%'
+AND LOWER(aesev) ILIKE '%severe%'
+ORDER BY usubjid
+
+Input:
+Table: RPT_LAB_INFORMATION
+Columns: usubjid, lbtest (entity: Calcium), lbstresn, visitnum (entity: 2)
+
+Output:
+SELECT usubjid, lbtest, lbstresn, visitnum
+FROM RPT_LAB_INFORMATION
+WHERE LOWER(lbtest) ILIKE '%calcium%'
+AND visitnum = 2
+ORDER BY usubjid, visitnum
+
+Input:
+Tables: RPT_AE, RPT_DM
+RPT_AE Columns: usubjid, aeterm, aestdtc
+RPT_DM Columns: usubjid, arm (entity: Treatment A)
+
+Output:
+SELECT ae.usubjid, ae.aeterm, ae.aestdtc, dm.arm
+FROM RPT_AE ae
+JOIN RPT_DM dm ON ae.usubjid = dm.usubjid
+WHERE LOWER(dm.arm) ILIKE '%treatment a%'
+ORDER BY ae.usubjid, ae.aestdtc
+"""
+
