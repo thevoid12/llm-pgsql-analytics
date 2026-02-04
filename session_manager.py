@@ -67,14 +67,24 @@ class RedisSessionManager:
             return []
         
         history = []
+        message_number = 1
         for msg in session_history.messages:
-            entry = {
-                "role": msg.role.value,
-                "content": msg.content
-            }
-            if msg.sql_content:
-                entry["sql_content"] = msg.sql_content
-            history.append(entry)
+            if msg.role == MessageRole.USER:
+                entry = {
+                    "number": message_number,
+                    "role": msg.role.value,
+                    "content": msg.content
+                }
+                history.append(entry)
+                message_number += 1
+            elif msg.role == MessageRole.AGENT and msg.sql_content:
+                entry = {
+                    "number": message_number,
+                    "role": msg.role.value,
+                    "sql_content": msg.sql_content
+                }
+                history.append(entry)
+                message_number += 1
         
         if limit:
             return history[-limit:]

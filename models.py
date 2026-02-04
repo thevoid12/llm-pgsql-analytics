@@ -35,6 +35,7 @@ class ChatMessage(BaseModel):
 class TableIdentificationResponse(BaseModel):
     confidence: ConfidenceLevel
     tables: List[str] = Field(default_factory=list)
+    reasoning: str = ""
 
 
 class ColumnEntityMapping(BaseModel):

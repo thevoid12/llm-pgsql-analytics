@@ -28,9 +28,11 @@ if prompt := st.chat_input("What would you like to know?"):
     with st.spinner("Processing your request..."):
         conversation_history = st.session_state.session_manager.get_user_messages()
         conversation_history_with_sql = st.session_state.session_manager.get_conversation_history_with_sql()
-        
+        print(f"conversation_history_with_sql: {conversation_history_with_sql}") 
+        print("*********************")
         input_classification = check_question_or_statement(prompt, conversation_history)
         print(f"input_classification: {input_classification}")
+        print("*********************")
         
         st.session_state.session_manager.save_message(prompt, MessageRole.USER)
         
@@ -54,9 +56,10 @@ if prompt := st.chat_input("What would you like to know?"):
                 full_table_schema = format_table_columns_for_llm(tables_from_entity_result)
                 print(full_table_schema)
                 sql_query = generate_sql_query(
-                    user_question=conversation_history_with_sql,
+                    user_question=prompt,
                     table_column_results=entity_column_result,
-                    full_table_schema=full_table_schema
+                    full_table_schema=full_table_schema,
+                    conversation_history=conversation_history_with_sql
                 )
                 
                 response_parts = [f"**Identified tables:** {', '.join(table_result.tables)}"]
@@ -79,7 +82,8 @@ if prompt := st.chat_input("What would you like to know?"):
                 response = generate_follow_up_question(
                     user_question=prompt,
                     confidence=table_result.confidence.value,
-                    possible_tables=table_result.tables
+                    possible_tables=table_result.tables,
+                    reasoning=table_result.reasoning
                 )
                 st.session_state.session_manager.save_message(response, MessageRole.AGENT)
     

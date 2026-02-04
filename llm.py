@@ -7,6 +7,29 @@ from typing import List
 
 load_dotenv()
 
+def format_conversation_history(conversation_history: list, include_sql: bool = False) -> str:
+    if not conversation_history:
+        return "No previous conversation"
+    
+    if include_sql:
+        history_text = []
+        for msg in conversation_history:
+            number = msg.get("number", "")
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+            sql = msg.get("sql_content", "")
+            
+            if role == "user":
+                history_text.append(f"[{number}] User: {content}")
+            elif role == "agent" and sql:
+                history_text.append(f"[{number}] Agent SQL: {sql}")
+        return "\n\n".join(history_text)
+    else:
+        if isinstance(conversation_history[0], dict):
+            return "\n".join([f"- {msg.get('content', msg)}" for msg in conversation_history])
+        else:
+            return "\n".join([f"- {msg}" for msg in conversation_history])
+
 def get_llm_client():
     client = AzureOpenAI(
         api_key=os.getenv("OPENAI_API_KEY"),
@@ -79,7 +102,7 @@ def identify_tables(
     client = get_llm_client()
     model = os.getenv("MODEL")
     
-    history_text = "\n".join([f"- {msg}" for msg in conversation_history]) if conversation_history else "No previous conversation"
+    history_text = format_conversation_history(conversation_history)
     
     #TODO: in future we need to check for tokens and compress the history to prevent limit. not now but a good optimization
     prompt = IDENTIFY_TABLE_USR.format(
@@ -108,7 +131,8 @@ def identify_tables(
 def generate_follow_up_question(
     user_question: str,
     confidence: str,
-    possible_tables: List[str]
+    possible_tables: List[str],
+    reasoning: str = ""
 ) -> str:
     client = get_llm_client()
     model = os.getenv("MODEL")
@@ -118,7 +142,8 @@ def generate_follow_up_question(
     prompt = FOLLOW_UP_TABLE_USR.format(
         user_question=user_question,
         confidence=confidence,
-        possible_tables=tables_list
+        possible_tables=tables_list,
+        reasoning=reasoning if reasoning else "No specific reasoning provided"
     )
     
     response = client.chat.completions.create(
@@ -167,7 +192,8 @@ def identify_entities_and_columns(
 def generate_sql_query(
     user_question: str,
     table_column_results: List[TableColumnResponse],
-    full_table_schema: str
+    full_table_schema: str,
+    conversation_history: list = None
 ) -> str:
     client = get_llm_client()
     model = os.getenv("MODEL")
@@ -186,9 +212,12 @@ def generate_sql_query(
     
     table_column_info = f"Selected columns and entities:\n{selected_columns_info}\n\nFull table schema (all available columns):\n{full_table_schema}"
     
+    conversation_history_str = format_conversation_history(conversation_history, include_sql=True)
+    
     prompt = GENERATE_SQL_USR.format(
         user_question=user_question,
-        table_column_info=table_column_info
+        table_column_info=table_column_info,
+        conversation_history=conversation_history_str
     )
     prompt=SYS_MSG+"\n\n"+prompt
     
