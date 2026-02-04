@@ -26,7 +26,8 @@ if prompt := st.chat_input("What would you like to know?"):
         st.markdown(prompt)
     
     with st.spinner("Processing your request..."):
-        conversation_history = st.session_state.session_manager.get_user_messages() #TODO: in future we got to user a merger prompt and use that for updated context which is a better idea for scale and accuracy
+        conversation_history = st.session_state.session_manager.get_user_messages()
+        conversation_history_with_sql = st.session_state.session_manager.get_conversation_history_with_sql()
         
         input_classification = check_question_or_statement(prompt, conversation_history)
         print(f"input_classification: {input_classification}")
@@ -45,7 +46,7 @@ if prompt := st.chat_input("What would you like to know?"):
                 entity_column_result = identify_entities_and_columns(
                     user_question=prompt,
                     table_columns_info=table_columns_info,
-                    conversation_history=conversation_history
+                    conversation_history=conversation_history_with_sql
                 )
                 tables_from_entity_result = [tc.table for tc in entity_column_result]
                 print(f"tables from entity result: {tables_from_entity_result}")
@@ -53,7 +54,7 @@ if prompt := st.chat_input("What would you like to know?"):
                 full_table_schema = format_table_columns_for_llm(tables_from_entity_result)
                 print(full_table_schema)
                 sql_query = generate_sql_query(
-                    user_question=prompt,
+                    user_question=conversation_history_with_sql,
                     table_column_results=entity_column_result,
                     full_table_schema=full_table_schema
                 )
@@ -73,14 +74,14 @@ if prompt := st.chat_input("What would you like to know?"):
                 response_parts.append(f"```sql\n{sql_query}\n```")
                 
                 response = "\n".join(response_parts)
+                st.session_state.session_manager.save_message(response, MessageRole.AGENT, sql_content=sql_query)
             else:
                 response = generate_follow_up_question(
                     user_question=prompt,
                     confidence=table_result.confidence.value,
                     possible_tables=table_result.tables
                 )
-        
-        st.session_state.session_manager.save_message(response, MessageRole.AGENT)
+                st.session_state.session_manager.save_message(response, MessageRole.AGENT)
     
     with st.chat_message("assistant"):
         st.markdown(response)

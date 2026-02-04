@@ -23,6 +23,7 @@ class InputClassification(BaseModel):
 class ChatMessage(BaseModel):
     content: str
     role: MessageRole
+    sql_content: str = ""
     timestamp: datetime = Field(default_factory=datetime.now)
     
     class Config:
@@ -55,8 +56,8 @@ class SessionHistory(BaseModel):
     session_id: str
     messages: List[ChatMessage] = Field(default_factory=list)
     
-    def add_message(self, content: str, role: MessageRole) -> None:
-        self.messages.append(ChatMessage(content=content, role=role))
+    def add_message(self, content: str, role: MessageRole, sql_content: str = "") -> None:
+        self.messages.append(ChatMessage(content=content, role=role, sql_content=sql_content))
     
     class Config:
         json_encoders = {

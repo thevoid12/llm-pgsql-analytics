@@ -22,7 +22,7 @@ class RedisSessionManager:
     def _get_redis_key(self) -> str:
         return f"{self.customer_id}_{self.session_id}"
     
-    def save_message(self, content: str, role: MessageRole) -> None:
+    def save_message(self, content: str, role: MessageRole, sql_content: str = "") -> None:
         key = self._get_redis_key()
         session_history = self.get_session_history()
         
@@ -32,7 +32,7 @@ class RedisSessionManager:
                 session_id=self.session_id
             )
         
-        session_history.add_message(content, role)
+        session_history.add_message(content, role, sql_content)
         self.redis_client.set(key, session_history.model_dump_json())
     
     def get_session_history(self) -> Optional[SessionHistory]:
@@ -59,6 +59,26 @@ class RedisSessionManager:
         if limit:
             return user_messages[-limit:]
         return user_messages
+    
+    def get_conversation_history_with_sql(self, limit: int = None) -> list[dict]:
+        session_history = self.get_session_history()
+        
+        if session_history is None or not session_history.messages:
+            return []
+        
+        history = []
+        for msg in session_history.messages:
+            entry = {
+                "role": msg.role.value,
+                "content": msg.content
+            }
+            if msg.sql_content:
+                entry["sql_content"] = msg.sql_content
+            history.append(entry)
+        
+        if limit:
+            return history[-limit:]
+        return history
     
     def close(self) -> None:
         self.redis_client.close()

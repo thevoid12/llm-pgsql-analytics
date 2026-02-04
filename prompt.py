@@ -235,6 +235,7 @@ Table and Column Information:
 2. **Schema Strictness:** Use **ONLY** the tables and columns listed in the "Table and Column Information" above. Do not hallucinate tables or columns (e.g., do not join a 'Severity' table if the severity column exists in the main table).
 3. **Join Strategy:** PREFER Single-Table queries. Only perform a JOIN if the data requested resides in two different tables provided in the schema.
 4. **Must use all information provided in the table column information**
+5. **Crosscheck critically:** crosscheck the generated sql query once generated with the table column information,user information and make sure that the query is correct and accurate.
 Instructions:
 1. Generate a SELECT query using ONLY the provided tables and columns
 2. Use appropriate JOINs if multiple tables are involved (join on common keys like usubjid, studyid)
