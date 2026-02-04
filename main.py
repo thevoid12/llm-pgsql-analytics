@@ -48,8 +48,10 @@ if prompt := st.chat_input("What would you like to know?"):
                     conversation_history=conversation_history
                 )
                 tables_from_entity_result = [tc.table for tc in entity_column_result]
+                print(f"tables from entity result: {tables_from_entity_result}")
+                print("*********************")
                 full_table_schema = format_table_columns_for_llm(tables_from_entity_result)
-                
+                print(full_table_schema)
                 sql_query = generate_sql_query(
                     user_question=prompt,
                     table_column_results=entity_column_result,

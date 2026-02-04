@@ -4,6 +4,7 @@ Assistant is designed to be able to assist from answering simple questions to pr
 It is able to process and understand large amounts of text, and can use this knowledge to provide accurate and informative responses to a wide range of 
 questions. Additionally, Assistant answer the question in an unbiased manner.
 Whether you need help with a specific question or just want to have a conversation about a particular topic, Assistant is here to assist.
+If the user's follow-up is an extension of the current topic, retain the logic of the previous question and change only the specific parameters requested.
 """
 
 # ------------------------------------- Question Checker ---------------------------------------------------
@@ -88,7 +89,8 @@ Analyze the question and determine which table(s) are most relevant. Consider:
 - Keywords related to adverse events, lab results, ECG, vital signs, demographics, etc.
 - Context from previous questions in the conversation
 - Specific medical or clinical terminology
-
+- critically and carefully check if the table has all the required column, then return that table.
+- if you identify more than one table is needed to be fetched,crtitically examine if the tables are needed or it is possible to achieve the same result with lesser number of tables
 Respond ONLY in the following JSON format:
 {{
   "confidence": "very_confident" | "less_confident" | "not_confident",
@@ -96,14 +98,23 @@ Respond ONLY in the following JSON format:
 }}
 
 Confidence levels:
-- very_confident: The question clearly maps to specific table(s)
+- very_confident: The question clearly maps to specific table(s).
 - less_confident: The question might relate to these tables but is ambiguous
 - not_confident: Cannot determine relevant tables from the question
 
-If very_confident, provide 1-3 most relevant tables.
+If very_confident, provide most relevant table(s).
 If less_confident, provide 2-4 possible tables.
 If not_confident, provide an empty array or your best guess.
 
+Example:
+Current Question:
+Show me list of subjects with ae is not HYPERTENSION and seriousness is not Non-serious and Ae toxicity grade is not Grade 3 or Ae Ongoing except Yes
+Response:
+{{
+  "confidence": "very_confident",
+  "tables": ["RPT_AE"]
+}}
+because RPT_AE table has all the columns needed for this question 
 """
 
 # ------------------------------------- Entity and Column Identification ---------------------------------------------------
@@ -219,56 +230,21 @@ User Question: {user_question}
 Table and Column Information:
 {table_column_info}
 
+**Core Directives:**
+1. **Zero Assumption Policy:** Do not add filters that are not explicitly in the question. (e.g., Do not filter by a specific `studyid` or `visit` unless the user explicitly names it).
+2. **Schema Strictness:** Use **ONLY** the tables and columns listed in the "Table and Column Information" above. Do not hallucinate tables or columns (e.g., do not join a 'Severity' table if the severity column exists in the main table).
+3. **Join Strategy:** PREFER Single-Table queries. Only perform a JOIN if the data requested resides in two different tables provided in the schema.
+4. **Must use all information provided in the table column information**
 Instructions:
 1. Generate a SELECT query using ONLY the provided tables and columns
 2. Use appropriate JOINs if multiple tables are involved (join on common keys like usubjid, studyid)
 3. Apply WHERE clauses for any entity values specified
-4. Use proper SQL syntax (assume PostgreSQL dialect)
+4. Use proper postgres SQL syntax (assume PostgreSQL dialect)
 5. For text comparisons, use ILIKE for case-insensitive matching
 6. Always include relevant identifier columns (usubjid, studyid) in SELECT
-7. Order results logically (by subject ID or date when applicable)
-
-Common join keys:
-- usubjid: Subject identifier (primary key for joining subject-level data)
-- studyid: Study identifier
-- siteid: Site identifier
-
+7. rely on lot of fuzzy search like using `%` for safe search. if explicitly asked for exact match or if you feel that exact match is needed, use `=`
+8. try to avoid joins if it is not actually required.
+9. do not assume things. generate sql for whatever is asked and strictly stick to it.
 Output ONLY the SQL query, no explanations or markdown formatting.
-
-Examples:
-
-Input:
-Table: RPT_AE
-Columns: usubjid, aeterm (entity: Headache), aesev (entity: Severe)
-
-Output:
-SELECT usubjid, aeterm, aesev
-FROM RPT_AE
-WHERE LOWER(aeterm) ILIKE '%headache%'
-AND LOWER(aesev) ILIKE '%severe%'
-ORDER BY usubjid
-
-Input:
-Table: RPT_LAB_INFORMATION
-Columns: usubjid, lbtest (entity: Calcium), lbstresn, visitnum (entity: 2)
-
-Output:
-SELECT usubjid, lbtest, lbstresn, visitnum
-FROM RPT_LAB_INFORMATION
-WHERE LOWER(lbtest) ILIKE '%calcium%'
-AND visitnum = 2
-ORDER BY usubjid, visitnum
-
-Input:
-Tables: RPT_AE, RPT_DM
-RPT_AE Columns: usubjid, aeterm, aestdtc
-RPT_DM Columns: usubjid, arm (entity: Treatment A)
-
-Output:
-SELECT ae.usubjid, ae.aeterm, ae.aestdtc, dm.arm
-FROM RPT_AE ae
-JOIN RPT_DM dm ON ae.usubjid = dm.usubjid
-WHERE LOWER(dm.arm) ILIKE '%treatment a%'
-ORDER BY ae.usubjid, ae.aestdtc
 """
 
