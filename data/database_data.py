@@ -450,3 +450,12 @@ def format_table_columns_for_llm(table_names: List[str]) -> str:
             result.append("")
     return "\n".join(result)
 
+
+PROHIBITED_KEYWORDS = [
+    'insert', 'update', 'delete', 'drop', 'truncate', 'alter', 'create', 'replace',
+    'information_schema', 'pg_catalog', 'pg_tables', 'pg_proc', 'pg_namespace', 'pg_class',
+    'table_schema', 'table_name', 'column_name', 'column_default', 'is_nullable',
+    'data_type', 'udt_name', 'character_maximum_length', 'numeric_precision',
+    'numeric_scale', 'datetime_precision', 'interval_type', 'collation_name',
+    'grant', 'revoke', 'rollback', 'commit', 'savepoint', 'vacuum', 'analyze'
+]

@@ -4,7 +4,7 @@ init:
 	uv init
 
 install:
-	uv add streamlit
+	uv add streamlit sqlglot
 
 run:
 	uv run streamlit run main.py

@@ -1,7 +1,8 @@
 import streamlit as st
 from session_manager import RedisSessionManager
-from llm import check_question_or_statement, generate_statement_response, identify_tables, generate_follow_up_question, identify_entities_and_columns, generate_sql_query
+from llm import check_question_or_statement, generate_statement_response, identify_tables, generate_follow_up_question, identify_entities_and_columns, generate_sql_with_validation
 from models import ConfidenceLevel, MessageRole
+from sql_validator import load_config
 import sys
 from pathlib import Path
 
@@ -26,6 +27,9 @@ if prompt := st.chat_input("What would you like to know?"):
         st.markdown(prompt)
     
     with st.spinner("Processing your request..."):
+        config = load_config()
+        max_validation_loops = config.get("max_sql_validation_loops", 3)
+        
         conversation_history = st.session_state.session_manager.get_user_messages()
         conversation_history_with_sql = st.session_state.session_manager.get_conversation_history_with_sql()
         print(f"conversation_history_with_sql: {conversation_history_with_sql}") 
@@ -55,12 +59,19 @@ if prompt := st.chat_input("What would you like to know?"):
                 print("*********************")
                 full_table_schema = format_table_columns_for_llm(tables_from_entity_result)
                 print(full_table_schema)
-                sql_query = generate_sql_query(
-                    user_question=prompt,
-                    table_column_results=entity_column_result,
-                    full_table_schema=full_table_schema,
-                    conversation_history=conversation_history_with_sql
-                )
+                
+                try:
+                    sql_query = generate_sql_with_validation(
+                        user_question=prompt,
+                        table_column_results=entity_column_result,
+                        full_table_schema=full_table_schema,
+                        conversation_history=conversation_history_with_sql,
+                        max_loops=max_validation_loops
+                    )
+                except ValueError as e:
+                    st.error(f"Failed to generate valid SQL: {str(e)}")
+                    st.session_state.session_manager.save_message(f"Error: {str(e)}", MessageRole.AGENT)
+                    st.stop()
                 
                 response_parts = [f"**Identified tables:** {', '.join(table_result.tables)}"]
                 response_parts.append("\n**Columns and entities detected:**")

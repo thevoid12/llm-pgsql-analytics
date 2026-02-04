@@ -277,5 +277,33 @@ Instructions:
 10. Double-check that every column in WHERE clause exists in the table schema
 
 Output ONLY the SQL query, no explanations or markdown formatting.
+
+"""
+
+IMPROVE_SQL_USR = """
+You are a SQL expert for clinical trial databases. The previously generated SQL query has validation issues that need to be fixed.
+
+Original User Question: {user_question}
+
+Table and Column Information:
+{table_column_info}
+
+Previous SQL Query:
+{previous_sql}
+
+Validation Issues Found:
+{validation_errors}
+
+Please generate an IMPROVED SQL query that:
+1. Fixes all the validation issues mentioned above
+2. Still answers the original user question correctly
+3. Uses ONLY the tables and columns from the Table and Column Information
+4. Follows PostgreSQL syntax
+5. Is a valid SELECT statement only
+6. Does not use any prohibited keywords or operations
+7. Does not include SQL comments or multiple statements
+8. Includes appropriate WHERE clauses to avoid excessive data retrieval
+
+Output ONLY the corrected SQL query, no explanations or markdown formatting.
 """
 
