@@ -9,13 +9,50 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent / "data"))
 from database_data import format_tables_for_llm,format_table_columns_for_llm
 
-st.title("Chat POC")
-
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if "session_manager" not in st.session_state:
     st.session_state.session_manager = RedisSessionManager()
+
+
+@st.dialog("Clear All Data")
+def clear_all_dialog():
+    st.write("Are you sure you want to clear all data? This will remove all chat messages and stored memory.")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Yes, Clear All", type="primary", use_container_width=True):
+            st.session_state.session_manager.clear_session()
+            st.session_state.messages = []
+            st.rerun()
+    with col2:
+        if st.button("Cancel", use_container_width=True, key="cancel_clear_all"):
+            st.rerun()
+
+
+@st.dialog("Clear Memory")
+def clear_memory_dialog():
+    st.write("Are you sure you want to clear the memory? This will remove all stored memory but keep the current chat messages.")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Yes, Clear Memory", type="primary", use_container_width=True):
+            st.session_state.session_manager.clear_session()
+            st.session_state.messages.append({"role": "assistant", "content": "All existing memories cleared."})
+            st.rerun()
+    with col2:
+        if st.button("Cancel", use_container_width=True, key="cancel_clear_memory"):
+            st.rerun()
+
+
+col_title, col_btn1, col_btn2 = st.columns([5, 1.5, 1.5], vertical_alignment="center", gap="small")
+with col_title:
+    st.title("Chat POC")
+with col_btn1:
+    if st.button("Clear All", use_container_width=True):
+        clear_all_dialog()
+with col_btn2:
+    if st.button("Clear Memory", use_container_width=True):
+        clear_memory_dialog()
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
