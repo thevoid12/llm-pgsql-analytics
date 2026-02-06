@@ -34,9 +34,9 @@ test-redis:
 	uv run pytest tests/test_redis.py -v
 
 run_clean:
-	@echo "Clearing Redis session data..."
-	@podman exec chat-poc-redis redis-cli DEL "$$(grep CUSTOMER_ID .env | cut -d '=' -f2)_$$(grep SESSION_ID .env | cut -d '=' -f2)" || echo "Redis key not found or already cleared"
-	@echo "Session cleared. Starting application..."
+	@echo "Clearing all session data for customer..."
+	@podman exec chat-poc-redis sh -c "redis-cli KEYS '$$(grep CUSTOMER_ID .env | sed "s/^export //" | cut -d "=" -f2)_*' | xargs -r redis-cli DEL" || echo "No sessions found or already cleared"
+	@echo "Sessions cleared. Starting application..."
 	uv run streamlit run main.py
 
 # --- App container ---

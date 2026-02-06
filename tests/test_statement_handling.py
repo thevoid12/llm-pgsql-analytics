@@ -17,9 +17,8 @@ def session_manager():
         "REDIS_PORT": "6379",
         "REDIS_DB": "0",
         "CUSTOMER_ID": "test_cust_02",
-        "SESSION_ID": "test-session-456"
     }):
-        manager = RedisSessionManager()
+        manager = RedisSessionManager(session_id="test-session-456")
         yield manager
         manager.clear_session()
         manager.close()

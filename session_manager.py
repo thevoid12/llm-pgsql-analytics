@@ -9,7 +9,7 @@ load_dotenv()
 
 
 class RedisSessionManager:
-    def __init__(self) -> None:
+    def __init__(self, session_id: str) -> None:
         self.redis_client = redis.Redis(
             host=os.getenv("REDIS_HOST", "localhost"),
             port=int(os.getenv("REDIS_PORT", 6379)),
@@ -17,7 +17,7 @@ class RedisSessionManager:
             decode_responses=True,
         )
         self.customer_id = os.getenv("CUSTOMER_ID", "cust_01")
-        self.session_id = os.getenv("SESSION_ID", "550e8400-e29b-41d4-a716-446655440000")
+        self.session_id = session_id
     
     def _get_redis_key(self) -> str:
         return f"{self.customer_id}_{self.session_id}"

@@ -1,4 +1,5 @@
 import streamlit as st
+import uuid
 from session_manager import RedisSessionManager
 from llm import check_question_or_statement, generate_statement_response, identify_tables, generate_follow_up_question, identify_entities_and_columns, generate_sql_with_validation, cross_check_sql_with_retry
 from models import ConfidenceLevel, MessageRole
@@ -9,11 +10,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent / "data"))
 from database_data import format_tables_for_llm,format_table_columns_for_llm
 
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if "session_manager" not in st.session_state:
-    st.session_state.session_manager = RedisSessionManager()
+    st.session_state.session_manager = RedisSessionManager(session_id=st.session_state.session_id)
 
 
 @st.dialog("Clear All Data")
