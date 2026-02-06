@@ -1,3 +1,4 @@
 {
-    "max_sql_validation_loops": 3
+    "max_sql_validation_loops": 3,
+    "max_sql_crosscheck_loops":5 
 }

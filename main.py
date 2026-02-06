@@ -1,6 +1,6 @@
 import streamlit as st
 from session_manager import RedisSessionManager
-from llm import check_question_or_statement, generate_statement_response, identify_tables, generate_follow_up_question, identify_entities_and_columns, generate_sql_with_validation
+from llm import check_question_or_statement, generate_statement_response, identify_tables, generate_follow_up_question, identify_entities_and_columns, generate_sql_with_validation, cross_check_sql_with_retry
 from models import ConfidenceLevel, MessageRole
 from sql_validator import load_config
 import sys
@@ -109,7 +109,16 @@ if prompt := st.chat_input("What would you like to know?"):
                     st.error(f"Failed to generate valid SQL: {str(e)}")
                     st.session_state.session_manager.save_message(f"Error: {str(e)}", MessageRole.AGENT)
                     st.stop()
-                
+
+                max_crosscheck_loops = config.get("max_sql_crosscheck_loops", 2)
+                sql_query = cross_check_sql_with_retry(
+                    user_question=prompt,
+                    table_column_info=full_table_schema,
+                    sql_query=sql_query,
+                    conversation_history=conversation_history_with_sql,
+                    max_loops=max_crosscheck_loops
+                )
+
                 response_parts = [f"**Identified tables:** {', '.join(table_result.tables)}"]
                 response_parts.append("\n**Columns and entities detected:**")
                 

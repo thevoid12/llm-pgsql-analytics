@@ -52,6 +52,17 @@ class EntityColumnDetectionResponse(BaseModel):
     tables: List[TableColumnResponse] = Field(default_factory=list)
 
 
+class CrossCheckStatus(str, Enum):
+    CORRECT = "correct"
+    NOT_CORRECT = "not_correct"
+
+
+class SqlCrossCheckResponse(BaseModel):
+    status: CrossCheckStatus
+    corrected_sql: str = ""  # populated only when status is "not_correct"
+    reasoning: str = ""  # explanation of what was wrong or why it's correct
+
+
 class SessionHistory(BaseModel):
     customer_id: str
     session_id: str

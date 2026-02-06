@@ -280,6 +280,44 @@ Output ONLY the SQL query, no explanations or markdown formatting.
 
 """
 
+CROSS_CHECK_SQL_USR = """
+You are a SQL expert for clinical trial databases. Your task is to cross-check whether a generated SQL query correctly answers the user's original question.
+
+Conversation History (for follow-up context):
+{conversation_history}
+
+User's Original Question: {user_question}
+
+Table and Column Information:
+{table_column_info}
+
+Generated SQL Query:
+{sql_query}
+
+Previous Cross-Check Feedback (if any):
+{previous_reasoning}
+
+Instructions:
+Carefully analyze the generated SQL query against the user's original question and table schema. If previous cross-check feedback is provided, pay special attention to the issues mentioned and verify they have been addressed. Check the following:
+1. **Correct columns**: Are the right columns selected to answer the question?
+2. **Correct WHERE filters**: Do the WHERE conditions match the user's intent? Are entity values correct?
+3. **Correct JOINs**: If multiple tables are involved, are the JOINs correct and necessary?
+4. **User intent match**: Does the query as a whole answer what the user actually asked?
+5. **No extra filters**: Are there any filters that the user did NOT request?
+6. **No missing filters**: Are there filters the user DID request that are missing?
+
+Respond in the following JSON format:
+{{
+  "status": "correct" | "not_correct",
+  "corrected_sql": "the corrected SQL query if status is not_correct, otherwise empty string",
+  "reasoning": "brief explanation of what was wrong or why the query is correct"
+}}
+
+If the query is correct, set status to "correct" and leave corrected_sql empty.
+If the query is not correct, set status to "not_correct" and provide the corrected SQL in corrected_sql.
+The corrected SQL must use ONLY the tables and columns from the Table and Column Information above.
+"""
+
 IMPROVE_SQL_USR = """
 You are a SQL expert for clinical trial databases. The previously generated SQL query has validation issues that need to be fixed.
 

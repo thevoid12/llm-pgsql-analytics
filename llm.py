@@ -1,8 +1,8 @@
 import os
 from openai import AzureOpenAI
 from dotenv import load_dotenv
-from prompt import SYS_MSG, RELEVANT_QUESTION_CHECKER_USR, STATEMENT_RESPONSE_USR, IDENTIFY_TABLE_USR, FOLLOW_UP_TABLE_USR, IDENTIFY_ENTITIES_COLUMNS_USR, GENERATE_SQL_USR, IMPROVE_SQL_USR
-from models import TableIdentificationResponse, ConfidenceLevel, InputClassification, TableColumnResponse, EntityColumnDetectionResponse
+from prompt import SYS_MSG, RELEVANT_QUESTION_CHECKER_USR, STATEMENT_RESPONSE_USR, IDENTIFY_TABLE_USR, FOLLOW_UP_TABLE_USR, IDENTIFY_ENTITIES_COLUMNS_USR, GENERATE_SQL_USR, IMPROVE_SQL_USR, CROSS_CHECK_SQL_USR
+from models import TableIdentificationResponse, ConfidenceLevel, InputClassification, TableColumnResponse, EntityColumnDetectionResponse, SqlCrossCheckResponse, CrossCheckStatus
 from typing import List
 from sql_validator import validate_sql, load_config
 
@@ -280,7 +280,7 @@ def improve_sql_query(
 ) -> str:
     client = get_llm_client()
     model = os.getenv("MODEL")
-    
+
     prompt = IMPROVE_SQL_USR.format(
         user_question=user_question,
         table_column_info=table_column_info,
@@ -288,7 +288,7 @@ def improve_sql_query(
         validation_errors=validation_errors
     )
     prompt = SYS_MSG + "\n\n" + prompt
-    
+
     response = client.chat.completions.create(
         model=model,
         messages=[
@@ -296,5 +296,77 @@ def improve_sql_query(
         ],
         temperature=0
     )
-    
+
     return response.choices[0].message.content.strip()
+
+
+def cross_check_sql(
+    user_question: str,
+    table_column_info: str,
+    sql_query: str,
+    conversation_history: list = None,
+    previous_reasoning: str = ""
+) -> SqlCrossCheckResponse:
+    client = get_llm_client()
+    model = os.getenv("MODEL")
+
+    conversation_history_str = format_conversation_history(conversation_history, include_sql=True) if conversation_history else "No previous conversation"
+
+    prompt = CROSS_CHECK_SQL_USR.format(
+        user_question=user_question,
+        table_column_info=table_column_info,
+        sql_query=sql_query,
+        conversation_history=conversation_history_str,
+        previous_reasoning=previous_reasoning if previous_reasoning else "None"
+    )
+
+    try:
+        completion = client.beta.chat.completions.parse(
+            model=model,
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0,
+            response_format=SqlCrossCheckResponse
+        )
+        return completion.choices[0].message.parsed
+    except Exception as e:
+        print(f"Error in cross_check_sql: {e}")
+        return SqlCrossCheckResponse(status=CrossCheckStatus.CORRECT, reasoning="Cross-check failed, assuming correct")
+
+
+def cross_check_sql_with_retry(
+    user_question: str,
+    table_column_info: str,
+    sql_query: str,
+    conversation_history: list = None,
+    max_loops: int = 2
+) -> str:
+    current_sql = sql_query
+    previous_reasoning = ""
+
+    for attempt in range(max_loops):
+        print(f"Cross-check attempt {attempt + 1}/{max_loops}")
+        result = cross_check_sql(
+            user_question=user_question,
+            table_column_info=table_column_info,
+            sql_query=current_sql,
+            conversation_history=conversation_history,
+            previous_reasoning=previous_reasoning
+        )
+        print(f"Cross-check result: status={result.status.value}, reasoning={result.reasoning}")
+
+        if result.status == CrossCheckStatus.CORRECT:
+            print("Cross-check passed: SQL is correct")
+            return current_sql
+
+        if result.status == CrossCheckStatus.NOT_CORRECT and result.corrected_sql:
+            print(f"Cross-check corrected SQL: {result.corrected_sql}")
+            previous_reasoning = result.reasoning
+            current_sql = result.corrected_sql
+        else:
+            print("Cross-check returned not_correct but no corrected SQL provided")
+            break
+
+    print(f"Cross-check loop exhausted, returning last SQL")
+    return current_sql
