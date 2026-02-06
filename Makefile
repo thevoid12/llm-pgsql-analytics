@@ -1,4 +1,4 @@
-.PHONY: init install run activate redis-build redis-start redis-stop redis-logs redis-clean test-redis run_clean
+.PHONY: init install run activate redis-build redis-start redis-stop redis-logs redis-clean test-redis run_clean app-build build-all pod-up pod-down pod-restart pod-logs pod-logs-redis
 
 init:
 	uv init
@@ -11,6 +11,8 @@ run:
 
 activate:
 	source .venv/bin/activate
+
+# --- Redis container (standalone) ---
 
 redis-build:
 	podman build -t chat-poc-redis -f Dockerfile.redis .
@@ -36,3 +38,32 @@ run_clean:
 	@podman exec chat-poc-redis redis-cli DEL "$$(grep CUSTOMER_ID .env | cut -d '=' -f2)_$$(grep SESSION_ID .env | cut -d '=' -f2)" || echo "Redis key not found or already cleared"
 	@echo "Session cleared. Starting application..."
 	uv run streamlit run main.py
+
+# --- App container ---
+
+app-build:
+	podman build -t chat-poc-app -f Dockerfile .
+
+# --- Full stack (podman pod) ---
+
+build-all: redis-build app-build
+
+pod-up:
+	podman pod create --name chat-poc-pod -p 8501:8501
+	podman run -d --pod chat-poc-pod --name chat-poc-redis chat-poc-redis
+	@sed 's/^export //' .env > .env.podman
+	podman run -d --pod chat-poc-pod --name chat-poc-app --env-file .env.podman chat-poc-app
+	@rm -f .env.podman
+	@echo "Pod is up — app at http://localhost:8501"
+
+pod-down:
+	podman pod stop chat-poc-pod || true
+	podman pod rm chat-poc-pod || true
+
+pod-restart: pod-down pod-up
+
+pod-logs:
+	podman logs -f chat-poc-app
+
+pod-logs-redis:
+	podman logs -f chat-poc-redis

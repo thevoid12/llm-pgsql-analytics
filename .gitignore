@@ -1,4 +1,5 @@
 .env
+.env.podman
 __pycache__/
 .windsurfrules
 design/design.excalidraw
