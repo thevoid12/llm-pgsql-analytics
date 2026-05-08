@@ -1,7 +1,9 @@
-# Chat POC (NL2SQL)
+# NL2SQL
 
 Clinical trial data query system using natural language to SQL conversion with LLM-powered validation.
 
+## design 
+![design](./design/2_design.png)
 ## Prerequisites
 
 - Python 3.13+
