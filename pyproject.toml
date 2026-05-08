@@ -1,5 +1,5 @@
 [project]
-name = "chat-poc"
+name = "llm-pgsql-analytics"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
